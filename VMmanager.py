@@ -15,12 +15,12 @@ class VMmanager:
         self.user = user
         self.vms_home = '/opt/VMs/' + user
 
-        if not os.path.exists(vms_home):
-            sys.stderr.write(vms_home + " doesn't exist.\nContact your system administrator.\n")
-            raise VMmanagerException()
+        if not os.path.exists(self.vms_home):
+            sys.stderr.write(self.vms_home + " doesn't exist.\nContact your system administrator.\n")
+            # raise VMmanagerException()
 
         self.vms = []
-        self._load_vms()
+        # self._load_vms()
     
     def _load_vms(self):
         directories = os.listdir(self.vms_home)
@@ -29,77 +29,79 @@ class VMmanager:
                 self.vms.append(d)
 
     def list(self, args):
-        parser = argparse.ArgumentParser(description='List all VMs')
-        parser.add_argument('-c', nargs='?', help='')
+        parser = argparse.ArgumentParser(prog='list', description='List all VMs')
+        parser.add_argument('-c', dest='config', action='store_true', help='Include configuration')
+        parser.add_argument('-s', dest='status', action='store_true', help='Include status')
+        parser.add_argument('name', nargs='?', default='')
+        args = parser.parse_args(args)
 
-        if vm != '':
-            vms = vm
+        if args.name != '':
+            vms = args.name
         else:
             vms = self.vms
 
         for v in vms:
             print(v)
-            if status:
+            if args.status:
                 print(self.get_status(v))
-            if config:
-                with open(self.vms_home + '/' + d + '/config.json') as f:
+            if args.config:
+                with open(self.vms_home + '/' + v + '/config.json') as f:
                     print(f.readline())
 
     def get_status(self, vm):
         return os.path.exists(self.vms_home + '/' + vm + '/monitor')
 
     def create(self, args):
-        if len(args) != 7 and len(args) != 9:
-            usage()
+        parser = argparse.ArgumentParser(prog='create', description='Create a new VM')
+        parser.add_argument('name', nargs=1)
+        parser.add_argument('--disk', required=True, help='Disk size (understand suffix M and G)')
+        parser.add_argument('--ram', required=True, help='Memory size (understand suffix M and G)')
+        parser.add_argument('--cdrom', required=False, help='Iso file to put in virtual CD-ROM')
+        parser.add_argument('--network', required=True, choices=['none', 'NAT', 'bridge'], help='Network type')
+        args = parser.parse_args(args)
 
-        name = args[0]
-        disk_size = 0
-        ram_size = 0
-        cdrom = ''
-        network = 'none'
-        for i in range(len(args)):
-            arg = args.pop(0)
-            if arg == '--disk':
-                disk_size = args[i + 1]
-            elif arg == '--ram':
-                ram_size = args[i + 1]
-            elif arg == '--cdrom':
-                cdrom = args[i + 1]
-            elif arg == '--network':
-                network = args[i + 1]
+    def modify(self, args):
+        parser = argparse.ArgumentParser(prog='modify', description='Modify an existing VM')
+        parser.add_argument('name', nargs=1)
+        parser.add_argument('--ram', required=False, help='Memory size (understand suffix M and G)')
+        parser.add_argument('--cdrom', required=False, help='Iso file to put in virtual CD-ROM')
+        parser.add_argument('--network', required=False, choices=['none', 'NAT', 'bridge'], help='Network type')
+        args = parser.parse_args(args)
+
+    def delete(self, args):
+        parser = argparse.ArgumentParser(prog='delete', description='Delete an existing VM')
+        parser.add_argument('name', nargs=1)
+        parser.add_argument('-f', dest='force', action='store_true', help='Force operation if VM is running')
+        parser.add_argument('--preserve-disk', action='store_true', help="Don't delete disk")
+        args = parser.parse_args(args)
+
+    def state(self, args):
+        parser = argparse.ArgumentParser(prog='state', description='Get state of all/a running VM')
+        parser.add_argument('name', nargs='?', default='')
+        args = parser.parse_args(args)
+
+    def snapshot(self, args):
+        parser = argparse.ArgumentParser(prog='snapshot', description='Take a snapshot of a stopped VM')
+        parser.add_argument('name', nargs=1)
+        parser.add_argument('snapshot_name', nargs=1)
+        args = parser.parse_args(args)
+
+    def run(self, args):
+        parser = argparse.ArgumentParser(prog='run', description='Launch a VM')
+        parser.add_argument('name', nargs=1)
+        parser.add_argument('--boot', required=False, choices=['cdrom', 'disk'], help="Select boot device")
+        args = parser.parse_args(args)
+
+    def stop(self, args):
+        parser = argparse.ArgumentParser(prog='stop', description='Stop a running VM')
+        parser.add_argument('name', nargs=1)
+        parser.add_argument('-f', dest='force', action='store_true', help='Force operation')
+        args = parser.parse_args(args)
 
 
 def usage():
-    usage = """Usage: {} <operation> [arguments...]
+    usage = """Usage: {} <operation> [-h] [arguments...]
 <operation> = list|create|modify|delete|state|snapshot|run|stop
-
-list - List all VMs
-    list [-c] [-s] [name]
-    -c include configuration
-    -s include status
-
-create - Create a new VM
-    create <name> --disk <size> --ram <size> [--cdrom <iso file>] --network none|NAT|bridge
-
-modify - Modify an existing VM
-    modify <name> [--ram <size>] [--cdrom <iso file>|none] [--network none|NAT|bridge]
-
-delete - Delete an existing VM
-    delete [-f] [--preserve-disk] <name>
-    -f force operation if VM is running
-
-state - Get state of all/a running VM
-    state [name]
-
-snapshot - Take a snapshot of a stopped VM
-    snapshot <name> <snapshot name>
-
-run - Launch a VM
-    run <name> [--boot cdrom|disk]
-    
-stop - Stop a running VM
-    stop [-f] <name>
-    -f force operation
 
 """.format(sys.argv[0])
     sys.stderr.write(usage)
