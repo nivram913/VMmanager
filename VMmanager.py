@@ -131,6 +131,8 @@ class VMmanager:
         parser.add_argument('--network', required=False, choices=['none', 'NAT', 'bridge'], help='Network type')
         args = parser.parse_args(args)
 
+        raise VMmanagerException('Not implemented yet.')
+
     def delete(self, args):
         parser = argparse.ArgumentParser(prog='delete', description='Delete an existing VM')
         parser.add_argument('name', nargs=1, type=self._validate_vm_name, help='Existing VM name')
@@ -138,10 +140,14 @@ class VMmanager:
         parser.add_argument('--preserve-disk', action='store_true', help="Don't delete disk")
         args = parser.parse_args(args)
 
+        raise VMmanagerException('Not implemented yet.')
+
     def state(self, args):
         parser = argparse.ArgumentParser(prog='state', description='Get state of all/a running VM')
         parser.add_argument('name', nargs='?', default='', type=self._validate_vm_name, help='Existing VM name')
         args = parser.parse_args(args)
+
+        raise VMmanagerException('Not implemented yet.')
 
     def snapshot(self, args):
         parser = argparse.ArgumentParser(prog='snapshot', description='Take a snapshot of a stopped VM')
@@ -149,17 +155,23 @@ class VMmanager:
         parser.add_argument('snapshot_name', nargs=1, type=self._validate_vm_name, help='Snapshot file name')
         args = parser.parse_args(args)
 
+        raise VMmanagerException('Not implemented yet.')
+
     def run(self, args):
         parser = argparse.ArgumentParser(prog='run', description='Launch a VM')
         parser.add_argument('name', nargs=1, type=self._validate_vm_name, help='Existing VM name')
         parser.add_argument('--boot', required=False, choices=['cdrom', 'disk'], help="Select boot device")
         args = parser.parse_args(args)
 
+        raise VMmanagerException('Not implemented yet.')
+
     def stop(self, args):
         parser = argparse.ArgumentParser(prog='stop', description='Stop a running VM')
         parser.add_argument('name', nargs=1, type=self._validate_vm_name, help='Existing VM name')
         parser.add_argument('-f', dest='force', action='store_true', help='Force operation')
         args = parser.parse_args(args)
+
+        raise VMmanagerException('Not implemented yet.')
 
 
 def usage():
