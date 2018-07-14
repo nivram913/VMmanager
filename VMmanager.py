@@ -117,7 +117,7 @@ class VMmanager:
     def snapshot(self, args):
         parser = argparse.ArgumentParser(prog='snapshot', description='Take a snapshot of a stopped VM')
         parser.add_argument('name', nargs=1, type=self._validate_vm_name, help='Existing VM name')
-        parser.add_argument('snapshot_name', nargs=1, help='Snapshot file name')
+        parser.add_argument('snapshot_name', nargs=1, type=self._validate_vm_name, help='Snapshot file name')
         args = parser.parse_args(args)
 
     def run(self, args):
