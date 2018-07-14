@@ -3,6 +3,7 @@
 import os
 import sys
 import getpass
+import grp
 import argparse
 
 
@@ -15,8 +16,17 @@ class VMmanager:
         self.user = user
         self.vms_home = '/opt/VMs/' + user
 
-        if not os.path.exists(self.vms_home):
-            raise VMmanagerException(self.vms_home + " doesn't exist.\nContact your system administrator.\n")
+        # Check VMs home directory
+        if not os.path.isdir(self.vms_home):
+            raise VMmanagerException(self.vms_home + " doesn't exist.")
+
+        if not os.access(self.vms_home, os.W_OK):
+            raise VMmanagerException(self.vms_home + " isn't writable.")
+
+        # Check groups
+        groups = [g.gr_name for g in grp.getgrall() if user in g.gr_mem]
+        if 'kvm' not in groups:
+            raise VMmanagerException(user + " isn't in kvm group.")
 
         self.vms = []
         self._load_vms()
