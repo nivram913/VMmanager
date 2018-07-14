@@ -40,7 +40,7 @@ class VMmanager:
             if os.path.exists(self.vms_home + '/' + d + '/config.json'):
                 self.vms.append(d)
 
-    def _get_status(self, vm):
+    def _is_running(self, vm):
         return os.path.exists(self.vms_home + '/' + vm + '/monitor')
 
     def _validate_vm_name(self, name):
@@ -80,7 +80,7 @@ class VMmanager:
         for v in vms:
             print(v)
             if args.status:
-                print(self._get_status(v))
+                print(self._is_running(v))
             if args.config:
                 with open(self.vms_home + '/' + v + '/config.json') as f:
                     for line in f.readlines():
@@ -106,7 +106,7 @@ class VMmanager:
         os.mkdir(self.vms_home + '/' + args.name)
 
         # Create disk
-        r = self._run_command('qemu-img -f qcow2 {} {}'.format(self.vms_home + '/' + args.name, args.disk))
+        r = self._run_command('qemu-img -f qcow2 {}.img {}'.format(self.vms_home + '/' + args.name, args.disk))
         if r.returncode != 0:
             os.rmdir(self.vms_home + '/' + args.name)
             raise VMmanagerException("Could not create disk")
@@ -121,6 +121,8 @@ class VMmanager:
         # Write config.json
         with open(self.vms_home + '/' + args.name + '/config.json', 'w') as f:
             json.dump(config, f)
+
+        print('{} created successfully'.format(args.name))
 
     def modify(self, args):
         parser = argparse.ArgumentParser(prog='modify', description='Modify an existing VM')
@@ -138,10 +140,29 @@ class VMmanager:
         parser = argparse.ArgumentParser(prog='delete', description='Delete an existing VM')
         parser.add_argument('name', nargs=1, type=self._validate_vm_name, help='Existing VM name')
         parser.add_argument('-f', dest='force', action='store_true', help='Force operation if VM is running')
-        parser.add_argument('--preserve-disk', action='store_true', help="Don't delete disk")
+        parser.add_argument('--preserve-disk', dest='preserve', action='store_true', help="Don't delete disk")
         args = parser.parse_args(args)
 
-        raise VMmanagerException('Not implemented yet.')
+        # Check existing VM
+        if not os.path.exists(self.vms_home + '/' + args.name):  # or args.name not in self.vms:
+            raise VMmanagerException("Could not delete VM: doesn't exist")
+
+        # Check running status and eventually stop it
+        if self._is_running(args.name):
+            if not args.force:
+                raise VMmanagerException('VM is running.')
+            else:
+                self.stop([args.name, '-f'])
+
+        # Remove config.json
+        os.remove(self.vms_home + '/' + args.name + '/config.json')
+
+        # Eventually remove disk and directory
+        if not args.preserve:
+            os.remove(self.vms_home + '/' + args.name + '/' + args.name + '.img')
+            os.rmdir(self.vms_home + '/' + args.name)
+
+        print('{} removed'.format(args.name))
 
     def state(self, args):
         parser = argparse.ArgumentParser(prog='state', description='Get state of all/a running VM')
