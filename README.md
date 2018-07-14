@@ -8,9 +8,14 @@ This tool serve to administrate virtual machines with Qemu/KVM on an headless se
 - Run, stop VMs
 - Configure network between "NAT", "bridge" and "none"
 - Choose amount of memory and disk size
+- Take a snapshot
 
 ## Usage
 
+```
+VMmanager.py <operation> [-h] [arguments...]
+<operation> = list|create|modify|delete|state|snapshot|run|stop
+```
 
 ## Prerequisites
 Each user who wants to administrate VMs have to:
