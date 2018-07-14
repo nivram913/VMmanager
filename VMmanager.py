@@ -2,6 +2,7 @@
 
 import os
 import sys
+import socket
 import re
 import getpass
 import grp
@@ -162,7 +163,34 @@ class VMmanager:
         parser.add_argument('-f', dest='force', action='store_true', help='Force operation')
         args = parser.parse_args(args)
 
-        raise VMmanagerException('Not implemented yet.')
+        # Check existing VM
+        if not os.path.exists(self.vms_home + '/' + args.name):
+            raise VMmanagerException("Could not stop VM: doesn't exist")
+
+        # Check running status
+        if not self._is_running(args.name):
+            raise VMmanagerException("Could not stop VM: not running")
+
+        # Connecting to UNIX socket (QEMU monitor)
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        try:
+            sock.connect(self.vms_home + '/' + args.name + '/monitor')
+        except socket.error as e:
+            raise VMmanagerException('Could not stop VM: error with UNIX socket')
+
+        try:
+            sock.sendall('system_powerdown')
+        finally:
+            sock.close()
+
+        # Check VM state
+        if self._is_running(args.name):
+            if not args.force:
+                raise VMmanagerException('Could not stop VM')
+            else:
+                pass
+        else:
+            print('{} stopped'.format(args.name))
 
 
 def usage():
