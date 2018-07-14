@@ -68,10 +68,15 @@ class VMmanager:
             vms = self.vms
 
         for v in vms:
+            # Fetch MAC address
+            with open(self.vms_home + '/' + v + '/mac_addr') as f:
+                mac = f.readline()
+
             if args.status:
-                print('{}: {}'.format(v, 'RUNNING' if self._is_running(v) else 'STOPPED'))
+                print('{name} ({mac}): {status}'.format(name=v, mac=mac,
+                                                        status='RUNNING' if self._is_running(v) else 'STOPPED'))
             else:
-                print(v)
+                print('{name} ({mac})'.format(name=v, mac=mac))
 
     def create(self, args):
         parser = argparse.ArgumentParser(prog='create', description='Create a new VM')
@@ -98,6 +103,12 @@ class VMmanager:
             os.rmdir(self.vms_home + '/' + args.name)
             raise VMmanagerException("Could not create disk")
 
+        # Generate MAC address
+        uid = len(self.vms)
+        mac = '52:54:00:12:34:{}'.format(hex(uid)[2:])
+        with open(self.vms_home + '/' + args.name + '/mac_addr') as f:
+            f.write(mac)
+
         print('{} created successfully'.format(args.name))
 
     def delete(self, args):
@@ -119,6 +130,7 @@ class VMmanager:
 
         # Remove files
         os.remove(self.vms_home + '/' + args.name + '/disk.img')
+        os.remove(self.vms_home + '/' + args.name + '/mac_addr')
         os.rmdir(self.vms_home + '/' + args.name)
 
         print('{} removed'.format(args.name))
@@ -145,8 +157,11 @@ class VMmanager:
         if self._is_running(args.name):
             raise VMmanagerException("Could not run VM: already running")
 
+        # Fetch MAC address
+        with open(self.vms_home + '/' + args.name + '/mac_addr') as f:
+            mac = f.readline()
+
         # Run VM
-        mac = '52:54:00:12:34:56'
         cmd = 'kvm -m {mem} {img}.img -display none -monitor unix:{path}/monitor,server,nowait ' \
               '-k fr -netdev bridge,id=hn0 -device virtio-net-pci,netdev=hn0,id=nic1,mac={mac} -daemonize'\
             .format(mem=args.ram,

@@ -9,6 +9,8 @@ This tool serve to administrate virtual machines with Qemu/KVM on an headless se
 - Choose amount of memory on each start
 - Choose disk size during creation
 
+Currently, only up to 255 VMs can be managed.
+
 ## Usage
 
 ```
