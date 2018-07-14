@@ -16,17 +16,19 @@ class VMmanager:
         self.vms_home = '/opt/VMs/' + user
 
         if not os.path.exists(self.vms_home):
-            sys.stderr.write(self.vms_home + " doesn't exist.\nContact your system administrator.\n")
-            # raise VMmanagerException()
+            raise VMmanagerException(self.vms_home + " doesn't exist.\nContact your system administrator.\n")
 
         self.vms = []
-        # self._load_vms()
+        self._load_vms()
     
     def _load_vms(self):
         directories = os.listdir(self.vms_home)
         for d in directories:
             if os.path.exists(self.vms_home + '/' + d + '/config.json'):
                 self.vms.append(d)
+
+    def _get_status(self, vm):
+        return os.path.exists(self.vms_home + '/' + vm + '/monitor')
 
     def list(self, args):
         parser = argparse.ArgumentParser(prog='list', description='List all VMs')
@@ -43,13 +45,10 @@ class VMmanager:
         for v in vms:
             print(v)
             if args.status:
-                print(self.get_status(v))
+                print(self._get_status(v))
             if args.config:
                 with open(self.vms_home + '/' + v + '/config.json') as f:
                     print(f.readline())
-
-    def get_status(self, vm):
-        return os.path.exists(self.vms_home + '/' + vm + '/monitor')
 
     def create(self, args):
         parser = argparse.ArgumentParser(prog='create', description='Create a new VM')
