@@ -53,6 +53,13 @@ class VMmanager:
             raise argparse.ArgumentTypeError('Invalid size.')
         return value
 
+    def _validate_cdrom(self, value):
+        if value == 'none':
+            return value
+        if os.access(value, os.R_OK):
+            return value
+        raise argparse.ArgumentTypeError('Invalid access rights to the ISO file')
+
     def list(self, args):
         parser = argparse.ArgumentParser(prog='list', description='List all VMs')
         parser.add_argument('-c', dest='config', action='store_true', help='Include configuration')
@@ -80,7 +87,8 @@ class VMmanager:
                             help='Disk size (understand suffix M and G)')
         parser.add_argument('--ram', required=True, type=self._validate_size,
                             help='Memory size (understand suffix M and G)')
-        parser.add_argument('--cdrom', required=False, help='Iso file to put in virtual CD-ROM')
+        parser.add_argument('--cdrom', required=False, type=self._validate_cdrom,
+                            help='Iso file to put in virtual CD-ROM')
         parser.add_argument('--network', required=True, choices=['none', 'NAT', 'bridge'], help='Network type')
         args = parser.parse_args(args)
 
@@ -89,7 +97,8 @@ class VMmanager:
         parser.add_argument('name', nargs=1, type=self._validate_vm_name, help='VM name')
         parser.add_argument('--ram', required=False, type=self._validate_size,
                             help='Memory size (understand suffix M and G)')
-        parser.add_argument('--cdrom', required=False, help='Iso file to put in virtual CD-ROM')
+        parser.add_argument('--cdrom', required=False, type=self._validate_cdrom,
+                            help='Iso file to put in virtual CD-ROM (<path>|none)')
         parser.add_argument('--network', required=False, choices=['none', 'NAT', 'bridge'], help='Network type')
         args = parser.parse_args(args)
 
