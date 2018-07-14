@@ -59,17 +59,17 @@ class VMmanager:
     def list(self, args):
         parser = argparse.ArgumentParser(prog='list', description='List all VMs')
         parser.add_argument('--status', action='store_true', help='Include status')
-        parser.add_argument('--name', required=False, default='', type=self._validate_vm_name, help='Existing VM name')
+        parser.add_argument('--name', required=False, type=self._validate_vm_name, help='Existing VM name')
         args = parser.parse_args(args)
 
-        if args.name != '':
+        if hasattr(args, 'name'):
             vms = [args.name]
+
+            # Check existing VM
+            if not os.path.exists(self.vms_home + '/' + args.name):
+                raise VMmanagerException("Could not list VM: doesn't exist")
         else:
             vms = self.vms
-
-        # Check existing VM
-        if not os.path.exists(self.vms_home + '/' + args.name):
-            raise VMmanagerException("Could not list VM: doesn't exist")
 
         for v in vms:
             # Fetch MAC address
