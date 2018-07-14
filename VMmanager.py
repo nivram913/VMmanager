@@ -139,8 +139,9 @@ class VMmanager:
 
         print('{} removed'.format(args.name))
 
-    def state(self, args):
-        self.list(args.append('--status'))
+    def status(self, args):
+        args.append('--status')
+        self.list(args)
 
     def run(self, args):
         parser = argparse.ArgumentParser(prog='run', description='Launch a VM')
@@ -216,7 +217,7 @@ class VMmanager:
 
 def usage():
     usage = """Usage: {} <operation> [-h] [arguments...]
-<operation> = list|create|delete|state|run|stop
+<operation> = list|create|delete|status|run|stop
 
 """.format(sys.argv[0])
     sys.stderr.write(usage)
@@ -238,8 +239,8 @@ if __name__ == "__main__":
         manager.create(args)
     elif operation == 'delete':
         manager.delete(args)
-    elif operation == 'state':
-        manager.state(args)
+    elif operation == 'status':
+        manager.status(args)
     elif operation == 'run':
         manager.run(args)
     elif operation == 'stop':
