@@ -8,6 +8,7 @@ import getpass
 import grp
 import argparse
 import subprocess
+import time
 
 
 class VMmanagerException(Exception):
@@ -183,12 +184,15 @@ class VMmanager:
         finally:
             sock.close()
 
+        time.sleep(5)
+
         # Check VM state
         if self._is_running(args.name):
             if not args.force:
                 raise VMmanagerException('Could not stop VM')
             else:
-                pass
+                # Force shutdown
+                self._run_command("pkill -f 'qemu-system-x86_64.*{}.*'".format(args.name))
         else:
             print('{} stopped'.format(args.name))
 
