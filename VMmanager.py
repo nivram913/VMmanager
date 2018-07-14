@@ -58,8 +58,8 @@ class VMmanager:
 
     def list(self, args):
         parser = argparse.ArgumentParser(prog='list', description='List all VMs')
-        parser.add_argument('--status', dest='status', action='store_true', help='Include status')
-        parser.add_argument('name', nargs='?', default='', type=self._validate_vm_name, help='Existing VM name')
+        parser.add_argument('--status', action='store_true', help='Include status')
+        parser.add_argument('--name', required=False, default='', type=self._validate_vm_name, help='Existing VM name')
         args = parser.parse_args(args)
 
         if args.name != '':
@@ -80,7 +80,7 @@ class VMmanager:
 
     def create(self, args):
         parser = argparse.ArgumentParser(prog='create', description='Create a new VM')
-        parser.add_argument('name', nargs=1, type=self._validate_vm_name, help='VM name')
+        parser.add_argument('--name', required=True, type=self._validate_vm_name, help='VM name')
         parser.add_argument('--disk', required=True, type=self._validate_size,
                             help='Disk size (understand suffix M and G)')
         args = parser.parse_args(args)
@@ -113,7 +113,7 @@ class VMmanager:
 
     def delete(self, args):
         parser = argparse.ArgumentParser(prog='delete', description='Delete an existing VM')
-        parser.add_argument('name', nargs=1, type=self._validate_vm_name, help='Existing VM name')
+        parser.add_argument('--name', required=True, type=self._validate_vm_name, help='Existing VM name')
         parser.add_argument('-f', dest='force', action='store_true', help='Force operation if VM is running')
         args = parser.parse_args(args)
 
@@ -136,15 +136,11 @@ class VMmanager:
         print('{} removed'.format(args.name))
 
     def state(self, args):
-        parser = argparse.ArgumentParser(prog='state', description='Get state of all/a running VM')
-        parser.add_argument('name', nargs='?', default='', type=self._validate_vm_name, help='Existing VM name')
-        args = parser.parse_args(args)
-
         self.list(args.append('--status'))
 
     def run(self, args):
         parser = argparse.ArgumentParser(prog='run', description='Launch a VM')
-        parser.add_argument('name', nargs=1, type=self._validate_vm_name, help='Existing VM name')
+        parser.add_argument('--name', required=True, type=self._validate_vm_name, help='Existing VM name')
         parser.add_argument('--ram', required=True, type=self._validate_size,
                             help='Memory size (understand suffix M and G)')
         args = parser.parse_args(args)
@@ -177,7 +173,7 @@ class VMmanager:
 
     def stop(self, args):
         parser = argparse.ArgumentParser(prog='stop', description='Stop a running VM')
-        parser.add_argument('name', nargs=1, type=self._validate_vm_name, help='Existing VM name')
+        parser.add_argument('--name', required=True, type=self._validate_vm_name, help='Existing VM name')
         parser.add_argument('-f', dest='force', action='store_true', help='Force operation')
         args = parser.parse_args(args)
 
