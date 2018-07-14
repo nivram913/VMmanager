@@ -6,6 +6,8 @@ import re
 import getpass
 import grp
 import argparse
+import subprocess
+import json
 
 
 class VMmanagerException(Exception):
@@ -60,6 +62,9 @@ class VMmanager:
             return value
         raise argparse.ArgumentTypeError('Invalid access rights to the ISO file')
 
+    def _run_command(self, cmd):
+        return subprocess.run(cmd.split(' '), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
     def list(self, args):
         parser = argparse.ArgumentParser(prog='list', description='List all VMs')
         parser.add_argument('-c', dest='config', action='store_true', help='Include configuration')
@@ -91,6 +96,30 @@ class VMmanager:
                             help='Iso file to put in virtual CD-ROM')
         parser.add_argument('--network', required=True, choices=['none', 'NAT', 'bridge'], help='Network type')
         args = parser.parse_args(args)
+
+        # Check existing VM
+        if os.path.exists(self.vms_home + '/' + args.name):  # or args.name in self.vms:
+            raise VMmanagerException("Could not create VM: file already exist")
+
+        # Create directory
+        os.mkdir(self.vms_home + '/' + args.name)
+
+        # Create disk
+        r = self._run_command('qemu-img -f qcow2 {} {}'.format(self.vms_home + '/' + args.name, args.disk))
+        if r.returncode != 0:
+            os.rmdir(self.vms_home + '/' + args.name)
+            raise VMmanagerException("Could not create disk")
+
+        # Construct config.json
+        if not hasattr(args, 'cdrom'):
+            cdrom = 'none'
+        else:
+            cdrom = args.cdrom
+        config = {'ram': args.ram, 'cdrom': cdrom, 'network': args.network}
+
+        # Write config.json
+        with open(self.vms_home + '/' + args.name + '/config.json', 'w') as f:
+            json.dump(config, f)
 
     def modify(self, args):
         parser = argparse.ArgumentParser(prog='modify', description='Modify an existing VM')
