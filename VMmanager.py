@@ -42,10 +42,16 @@ class VMmanager:
         return os.path.exists(self.vms_home + '/' + vm + '/monitor')
 
     def _validate_vm_name(self, name):
-        regex = re.compile('[a-zA-Z0-9_-]+')
+        regex = re.compile('[a-zA-Z0-9_-]{1,32}')
         if regex.fullmatch(name) is None:
-            raise argparse.ArgumentTypeError('Invalid VM name. Must be [a-zA-Z0-9_-]+')
+            raise argparse.ArgumentTypeError('Invalid VM name. Must be [a-zA-Z0-9_-]{1,32}')
         return name
+
+    def _validate_size(self, value):
+        regex = re.compile('[1-9][0-9]*(M|G)')
+        if regex.fullmatch(value) is None:
+            raise argparse.ArgumentTypeError('Invalid size.')
+        return value
 
     def list(self, args):
         parser = argparse.ArgumentParser(prog='list', description='List all VMs')
@@ -70,8 +76,10 @@ class VMmanager:
     def create(self, args):
         parser = argparse.ArgumentParser(prog='create', description='Create a new VM')
         parser.add_argument('name', nargs=1, type=self._validate_vm_name, help='VM name')
-        parser.add_argument('--disk', required=True, help='Disk size (understand suffix M and G)')
-        parser.add_argument('--ram', required=True, help='Memory size (understand suffix M and G)')
+        parser.add_argument('--disk', required=True, type=self._validate_size,
+                            help='Disk size (understand suffix M and G)')
+        parser.add_argument('--ram', required=True, type=self._validate_size,
+                            help='Memory size (understand suffix M and G)')
         parser.add_argument('--cdrom', required=False, help='Iso file to put in virtual CD-ROM')
         parser.add_argument('--network', required=True, choices=['none', 'NAT', 'bridge'], help='Network type')
         args = parser.parse_args(args)
@@ -79,7 +87,8 @@ class VMmanager:
     def modify(self, args):
         parser = argparse.ArgumentParser(prog='modify', description='Modify an existing VM')
         parser.add_argument('name', nargs=1, type=self._validate_vm_name, help='VM name')
-        parser.add_argument('--ram', required=False, help='Memory size (understand suffix M and G)')
+        parser.add_argument('--ram', required=False, type=self._validate_size,
+                            help='Memory size (understand suffix M and G)')
         parser.add_argument('--cdrom', required=False, help='Iso file to put in virtual CD-ROM')
         parser.add_argument('--network', required=False, choices=['none', 'NAT', 'bridge'], help='Network type')
         args = parser.parse_args(args)
