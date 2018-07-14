@@ -62,7 +62,7 @@ class VMmanager:
         parser.add_argument('--name', required=False, type=self._validate_vm_name, help='Existing VM name')
         args = parser.parse_args(args)
 
-        if hasattr(args, 'name'):
+        if args.name is not None:
             vms = [args.name]
 
             # Check existing VM
