@@ -83,7 +83,8 @@ class VMmanager:
                 print(self._get_status(v))
             if args.config:
                 with open(self.vms_home + '/' + v + '/config.json') as f:
-                    print(f.readline())
+                    for line in f.readlines():
+                        print(line)
 
     def create(self, args):
         parser = argparse.ArgumentParser(prog='create', description='Create a new VM')
