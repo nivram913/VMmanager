@@ -63,9 +63,13 @@ class VMmanager:
         args = parser.parse_args(args)
 
         if args.name != '':
-            vms = args.name
+            vms = [args.name]
         else:
             vms = self.vms
+
+        # Check existing VM
+        if not os.path.exists(self.vms_home + '/' + args.name):
+            raise VMmanagerException("Could not list VM: doesn't exist")
 
         for v in vms:
             # Fetch MAC address
