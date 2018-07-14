@@ -6,7 +6,8 @@ This tool serve to administrate virtual machines with Qemu/KVM on an headless se
 
 - Create, delete VMs
 - Run, stop VMs
-- Choose amount of memory and disk size
+- Choose amount of memory on each start
+- Choose disk size during creation
 
 ## Usage
 
