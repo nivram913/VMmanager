@@ -4,17 +4,15 @@ A QEMU/KVM virtual machine manager
 ## Description
 This tool serve to administrate virtual machines with Qemu/KVM on an headless server. You can:
 
-- Create, delete, modify VMs
+- Create, delete VMs
 - Run, stop VMs
-- Configure network between "NAT", "bridge" and "none"
 - Choose amount of memory and disk size
-- Take a snapshot
 
 ## Usage
 
 ```
 VMmanager.py <operation> [-h] [arguments...]
-<operation> = list|create|modify|delete|state|snapshot|run|stop
+<operation> = list|create|delete|state|run|stop
 ```
 
 ## Prerequisites
