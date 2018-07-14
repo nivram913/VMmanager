@@ -2,6 +2,7 @@
 
 import os
 import sys
+import stat
 import socket
 import re
 import getpass
@@ -31,6 +32,11 @@ class VMmanager:
         groups = [g.gr_name for g in grp.getgrall() if user in g.gr_mem]
         if 'kvm' not in groups:
             raise VMmanagerException(user + " isn't in kvm group.")
+
+        # Check setuid bit of /usr/lib/qemu/qemu-bridge-helper
+        mode = os.stat('/usr/lib/qemu/qemu-bridge-helper')
+        if mode.st_mode & stat.S_ISUID == 0:
+            raise VMmanagerException("/usr/lib/qemu/qemu-bridge-helper hasn't setuid bit set.")
 
         self.vms = []
         self._load_vms()
