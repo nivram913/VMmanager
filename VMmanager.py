@@ -146,11 +146,13 @@ class VMmanager:
             raise VMmanagerException("Could not run VM: already running")
 
         # Run VM
+        mac = '52:54:00:12:34:56'
         cmd = 'kvm -m {mem} {img}.img -display none -monitor unix:{path}/monitor,server,nowait ' \
-              '-k fr -netdev bridge,id=hn0 -device virtio-net-pci,netdev=hn0,id=nic1'\
+              '-k fr -netdev bridge,id=hn0 -device virtio-net-pci,netdev=hn0,id=nic1,mac={mac} -daemonize'\
             .format(mem=args.ram,
                     img=self.vms_home + '/' + args.name + '/' + args.name,
-                    path=self.vms_home + '/' + args.name)
+                    path=self.vms_home + '/' + args.name,
+                    mac=mac)
 
         r = self._run_command(cmd)
         if r.returncode != 0:
