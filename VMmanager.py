@@ -56,8 +56,7 @@ class VMmanager:
 
     def list(self, args):
         parser = argparse.ArgumentParser(prog='list', description='List all VMs')
-        parser.add_argument('-c', dest='config', action='store_true', help='Include configuration')
-        parser.add_argument('-s', dest='status', action='store_true', help='Include status')
+        parser.add_argument('--status', dest='status', action='store_true', help='Include status')
         parser.add_argument('name', nargs='?', default='', type=self._validate_vm_name, help='Existing VM name')
         args = parser.parse_args(args)
 
@@ -67,13 +66,10 @@ class VMmanager:
             vms = self.vms
 
         for v in vms:
-            print(v)
             if args.status:
-                print(self._is_running(v))
-            if args.config:
-                with open(self.vms_home + '/' + v + '/config.json') as f:
-                    for line in f.readlines():
-                        print(line)
+                print('{}: {}'.format(v, 'RUNNING' if self._is_running(v) else 'STOPPED'))
+            else:
+                print(v)
 
     def create(self, args):
         parser = argparse.ArgumentParser(prog='create', description='Create a new VM')
@@ -90,6 +86,11 @@ class VMmanager:
         os.mkdir(self.vms_home + '/' + args.name)
 
         # Create disk
+        disk_size = args.disk.replace('M', '').replace('G', '')
+        disk_size *= 1000 if args.disk[:-1] == 'M' else 1000000
+        if disk_size > 50000000:
+            raise VMmanagerException("Could not create VM: disk can't be greater than 50 Go")
+
         r = self._run_command('qemu-img -f qcow2 {}/disk.img {}'.format(self.vms_home + '/' + args.name, args.disk))
         if r.returncode != 0:
             os.rmdir(self.vms_home + '/' + args.name)
@@ -125,7 +126,7 @@ class VMmanager:
         parser.add_argument('name', nargs='?', default='', type=self._validate_vm_name, help='Existing VM name')
         args = parser.parse_args(args)
 
-        raise VMmanagerException('Not implemented yet.')
+        self.list(args.append('--status'))
 
     def run(self, args):
         parser = argparse.ArgumentParser(prog='run', description='Launch a VM')
@@ -151,7 +152,7 @@ class VMmanager:
 
         r = self._run_command(cmd)
         if r.returncode != 0:
-            raise VMmanagerException("Could not run VM")
+            raise VMmanagerException("Could not run VM: kvm returns {}".format(r.returncode))
 
         print('{} started'.format(args.name))
 
