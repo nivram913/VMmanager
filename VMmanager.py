@@ -197,7 +197,7 @@ class VMmanager:
             raise VMmanagerException('Could not stop VM: error with UNIX socket')
 
         try:
-            sock.sendall('system_powerdown')
+            sock.sendall('system_powerdown'.encode('ascii'))
         finally:
             sock.close()
 
