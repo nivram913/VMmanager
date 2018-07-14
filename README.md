@@ -13,8 +13,13 @@ Currently, only up to 255 VMs can be managed.
 
 ## Usage
 
+You can place this script in */usr/local/bin/VMmanager* and give it execution right (you must be root):
+```sh
+cp VMmanager.py /usr/local/bin/VMmanager && chmod +x /usr/local/bin/VMmanager
 ```
-VMmanager.py <operation> [-h] [arguments...]
+
+```
+VMmanager <operation> [-h] [arguments...]
 <operation> = list|create|delete|state|run|stop
 ```
 
