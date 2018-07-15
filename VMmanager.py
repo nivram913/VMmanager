@@ -46,100 +46,8 @@ class VMmanager:
         """
         return os.path.exists(self.vms_home + '/' + vm + '/monitor')
 
-    def _validate_vm_name(self, name):
-        regex = re.compile('[a-zA-Z0-9_-]{1,32}')
-        if regex.fullmatch(name) is None:
-            raise argparse.ArgumentTypeError('Invalid VM name. Must be [a-zA-Z0-9_-]{1,32}')
-        return name
-
-    def _validate_size(self, value):
-        regex = re.compile('[1-9][0-9]*(M|G)')
-        if regex.fullmatch(value) is None:
-            raise argparse.ArgumentTypeError('Invalid size.')
-        return value
-
     def _run_command(self, cmd):
         return subprocess.run(cmd.split(' '), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-    def list_ext(self, args):
-        parser = argparse.ArgumentParser(prog='list', description='List all VMs')
-        parser.add_argument('--status', action='store_true', help='Include status')
-        parser.add_argument('--name', required=False, type=self._validate_vm_name, help='Existing VM name')
-        args = parser.parse_args(args)
-
-        try:
-            vms_list = self.list(args.name, args.status)
-        except VMmanagerException as e:
-            print(e)
-            sys.exit(1)
-
-        for v in vms_list:
-            if args.status:
-                print('{name} ({mac}): {status}'.format(name=v['name'], mac=v['mac'], status=v['status']))
-            else:
-                print('{name} ({mac})'.format(name=v['name'], mac=v['mac']))
-
-    def create_ext(self, args):
-        parser = argparse.ArgumentParser(prog='create', description='Create a new VM')
-        parser.add_argument('--name', required=True, type=self._validate_vm_name, help='VM name')
-        parser.add_argument('--disk', required=True, type=self._validate_size,
-                            help='Disk size (understand suffix M and G)')
-        args = parser.parse_args(args)
-
-        try:
-            self.create(args.name, args.disk)
-        except VMmanagerException as e:
-            print(e)
-            sys.exit(1)
-
-        print('{} created successfully'.format(args.name))
-
-    def delete_ext(self, args):
-        parser = argparse.ArgumentParser(prog='delete', description='Delete an existing VM')
-        parser.add_argument('--name', required=True, type=self._validate_vm_name, help='Existing VM name')
-        parser.add_argument('-f', dest='force', action='store_true', help='Force operation if VM is running')
-        args = parser.parse_args(args)
-
-        try:
-            self.delete(args.name, args.force)
-        except VMmanagerException as e:
-            print(e)
-            sys.exit(1)
-
-        print('{} removed'.format(args.name))
-
-    def status_ext(self, args):
-        args.append('--status')
-        self.list_ext(args)
-
-    def run_ext(self, args):
-        parser = argparse.ArgumentParser(prog='run', description='Launch a VM')
-        parser.add_argument('--name', required=True, type=self._validate_vm_name, help='Existing VM name')
-        parser.add_argument('--ram', required=True, type=self._validate_size,
-                            help='Memory size (understand suffix M and G)')
-        args = parser.parse_args(args)
-
-        try:
-            self.run(args.name, args.ram)
-        except VMmanagerException as e:
-            print(e)
-            sys.exit(1)
-
-        print('{} started'.format(args.name))
-
-    def stop_ext(self, args):
-        parser = argparse.ArgumentParser(prog='stop', description='Stop a running VM')
-        parser.add_argument('--name', required=True, type=self._validate_vm_name, help='Existing VM name')
-        parser.add_argument('-f', dest='force', action='store_true', help='Force operation')
-        args = parser.parse_args(args)
-
-        try:
-            self.stop(args.name, args.force)
-        except VMmanagerException as e:
-            print(e)
-            sys.exit(1)
-
-        print('{} stopped'.format(args.name))
 
     def list(self, name=None, status=False):
         """
@@ -306,6 +214,7 @@ class VMmanager:
         return 0
 
 
+# MAIN
 if __name__ == "__main__":
     def usage():
         usage = """Usage: {} <operation> [-h] [arguments...]
@@ -315,6 +224,18 @@ if __name__ == "__main__":
         sys.stderr.write(usage)
         sys.exit(1)
 
+    def _validate_vm_name(name):
+        regex = re.compile('[a-zA-Z0-9_-]{1,32}')
+        if regex.fullmatch(name) is None:
+            raise argparse.ArgumentTypeError('Invalid VM name. Must be [a-zA-Z0-9_-]{1,32}')
+        return name
+
+    def _validate_size(value):
+        regex = re.compile('[1-9][0-9]*(M|G)')
+        if regex.fullmatch(value) is None:
+            raise argparse.ArgumentTypeError('Invalid size.')
+        return value
+
     if len(sys.argv) < 2:
         usage()
 
@@ -323,17 +244,86 @@ if __name__ == "__main__":
     operation = sys.argv.pop(1)
     args = sys.argv[1:]
 
-    if operation == 'list':
-        manager.list_ext(args)
+    if operation == 'list' or operation == 'status':
+        parser = argparse.ArgumentParser(prog='list', description='List all VMs')
+        if operation == 'list':
+            parser.add_argument('--status', action='store_true', help='Include status')
+        parser.add_argument('--name', required=False, type=_validate_vm_name, help='Existing VM name')
+        args = parser.parse_args(args)
+        if operation == 'list':
+            status = args.status
+        else:
+            status = True
+
+        try:
+            vms_list = manager.list(args.name, status)
+        except VMmanagerException as e:
+            print(e)
+            sys.exit(1)
+
+        for v in vms_list:
+            if status:
+                print('{name} ({mac}): {status}'.format(name=v['name'], mac=v['mac'], status=v['status']))
+            else:
+                print('{name} ({mac})'.format(name=v['name'], mac=v['mac']))
+
     elif operation == 'create':
-        manager.create_ext(args)
+        parser = argparse.ArgumentParser(prog='create', description='Create a new VM')
+        parser.add_argument('--name', required=True, type=_validate_vm_name, help='VM name')
+        parser.add_argument('--disk', required=True, type=_validate_size,
+                            help='Disk size (understand suffix M and G)')
+        args = parser.parse_args(args)
+
+        try:
+            manager.create(args.name, args.disk)
+        except VMmanagerException as e:
+            print(e)
+            sys.exit(1)
+
+        print('{} created successfully'.format(args.name))
+
     elif operation == 'delete':
-        manager.delete_ext(args)
-    elif operation == 'status':
-        manager.status_ext(args)
+        parser = argparse.ArgumentParser(prog='delete', description='Delete an existing VM')
+        parser.add_argument('--name', required=True, type=_validate_vm_name, help='Existing VM name')
+        parser.add_argument('-f', dest='force', action='store_true', help='Force operation if VM is running')
+        args = parser.parse_args(args)
+
+        try:
+            manager.delete(args.name, args.force)
+        except VMmanagerException as e:
+            print(e)
+            sys.exit(1)
+
+        print('{} removed'.format(args.name))
+
     elif operation == 'run':
-        manager.run_ext(args)
+        parser = argparse.ArgumentParser(prog='run', description='Launch a VM')
+        parser.add_argument('--name', required=True, type=_validate_vm_name, help='Existing VM name')
+        parser.add_argument('--ram', required=True, type=_validate_size,
+                            help='Memory size (understand suffix M and G)')
+        args = parser.parse_args(args)
+
+        try:
+            manager.run(args.name, args.ram)
+        except VMmanagerException as e:
+            print(e)
+            sys.exit(1)
+
+        print('{} started'.format(args.name))
+
     elif operation == 'stop':
-        manager.stop_ext(args)
+        parser = argparse.ArgumentParser(prog='stop', description='Stop a running VM')
+        parser.add_argument('--name', required=True, type=_validate_vm_name, help='Existing VM name')
+        parser.add_argument('-f', dest='force', action='store_true', help='Force operation')
+        args = parser.parse_args(args)
+
+        try:
+            manager.stop(args.name, args.force)
+        except VMmanagerException as e:
+            print(e)
+            sys.exit(1)
+
+        print('{} stopped'.format(args.name))
+
     else:
         usage()
