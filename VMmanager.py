@@ -49,13 +49,39 @@ class VMmanager:
     def _run_command(self, cmd):
         return subprocess.run(cmd.split(' '), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
+    def _validate_vm_name(self, name):
+        """
+        Validate VM name string against regex
+        :param name: VM name (string)
+        :return: True if ok, False otherwise
+        """
+        regex = re.compile('[a-zA-Z0-9_-]{1,32}')
+        if regex.fullmatch(name) is None:
+            return False
+        return True
+
+    def _validate_size(self, value):
+        """
+        Validate size string against regex
+        :param value: Size (string)
+        :return: True if ok, False otherwise
+        """
+        regex = re.compile('[1-9][0-9]*[MG]')
+        if regex.fullmatch(value) is None:
+            return False
+        return True
+
     def list(self, name=None, status=False):
         """
         List VMs
         :param name: VM name (optional) (string)
         :param status: Include VM status (boolean)
         :return: An array of dictionary representing a VM
+        :raise: VMmanagerException if error occurs
         """
+        if not self._validate_vm_name(name):
+            raise VMmanagerException("Could not list VM: Invalid name")
+
         vms_list = []
 
         if name is not None:
@@ -87,6 +113,12 @@ class VMmanager:
         :return: 0 if ok
         :raise: VMmanagerException if error occurs
         """
+        if not self._validate_vm_name(name):
+            raise VMmanagerException("Could not create VM: Invalid name")
+
+        if not self._validate_size(disk_size):
+            raise VMmanagerException("Could not run VM: Invalid disk size")
+
         # Check existing VM
         if os.path.exists(self.vms_home + '/' + name):  # or args.name in self.vms:
             raise VMmanagerException("Could not create VM: file already exist")
@@ -121,6 +153,9 @@ class VMmanager:
         :return: 0 if ok
         :raise: VMmanagerException if error occurs
         """
+        if not self._validate_vm_name(name):
+            raise VMmanagerException("Could not delete VM: Invalid name")
+
         # Check existing VM
         if not os.path.exists(self.vms_home + '/' + name):  # or args.name not in self.vms:
             raise VMmanagerException("Could not delete VM: doesn't exist")
@@ -147,6 +182,12 @@ class VMmanager:
         :return: 0 if ok
         :raise: VMmanagerException if error occurs
         """
+        if not self._validate_vm_name(name):
+            raise VMmanagerException("Could not run VM: Invalid name")
+
+        if not self._validate_size(ram_size):
+            raise VMmanagerException("Could not run VM: Invalid memory size")
+
         # Check existing VM
         if not os.path.exists(self.vms_home + '/' + name):
             raise VMmanagerException("Could not run VM: doesn't exist")
@@ -181,6 +222,9 @@ class VMmanager:
         :return: 0 if ok
         :raise: VMmanagerException if error occurs
         """
+        if not self._validate_vm_name(name):
+            raise VMmanagerException("Could not stop VM: Invalid name")
+
         # Check existing VM
         if not os.path.exists(self.vms_home + '/' + name):
             raise VMmanagerException("Could not stop VM: doesn't exist")
@@ -231,7 +275,7 @@ if __name__ == "__main__":
         return name
 
     def _validate_size(value):
-        regex = re.compile('[1-9][0-9]*(M|G)')
+        regex = re.compile('[1-9][0-9]*[MG]')
         if regex.fullmatch(value) is None:
             raise argparse.ArgumentTypeError('Invalid size.')
         return value
