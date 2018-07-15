@@ -38,7 +38,12 @@ class VMmanager:
     def _load_vms(self):
         self.vms = os.listdir(self.vms_home)
 
-    def _is_running(self, vm):
+    def is_running(self, vm):
+        """
+        Check if a VM is running
+        :param vm: VM name (string)
+        :return: True if VM is running, False if VM is stopped or VM doesn't exist
+        """
         return os.path.exists(self.vms_home + '/' + vm + '/monitor')
 
     def _validate_vm_name(self, name):
@@ -56,17 +61,100 @@ class VMmanager:
     def _run_command(self, cmd):
         return subprocess.run(cmd.split(' '), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-    def list(self, args):
+    def list_ext(self, args):
         parser = argparse.ArgumentParser(prog='list', description='List all VMs')
         parser.add_argument('--status', action='store_true', help='Include status')
         parser.add_argument('--name', required=False, type=self._validate_vm_name, help='Existing VM name')
         args = parser.parse_args(args)
 
-        if args.name is not None:
-            vms = [args.name]
+        try:
+            vms_list = self.list(args.name, args.status)
+        except VMmanagerException as e:
+            print(e)
+            sys.exit(1)
+
+        for v in vms_list:
+            if args.status:
+                print('{name} ({mac}): {status}'.format(name=v['name'], mac=v['mac'], status=v['status']))
+            else:
+                print('{name} ({mac})'.format(name=v['name'], mac=v['mac']))
+
+    def create_ext(self, args):
+        parser = argparse.ArgumentParser(prog='create', description='Create a new VM')
+        parser.add_argument('--name', required=True, type=self._validate_vm_name, help='VM name')
+        parser.add_argument('--disk', required=True, type=self._validate_size,
+                            help='Disk size (understand suffix M and G)')
+        args = parser.parse_args(args)
+
+        try:
+            self.create(args.name, args.disk)
+        except VMmanagerException as e:
+            print(e)
+            sys.exit(1)
+
+        print('{} created successfully'.format(args.name))
+
+    def delete_ext(self, args):
+        parser = argparse.ArgumentParser(prog='delete', description='Delete an existing VM')
+        parser.add_argument('--name', required=True, type=self._validate_vm_name, help='Existing VM name')
+        parser.add_argument('-f', dest='force', action='store_true', help='Force operation if VM is running')
+        args = parser.parse_args(args)
+
+        try:
+            self.delete(args.name, args.force)
+        except VMmanagerException as e:
+            print(e)
+            sys.exit(1)
+
+        print('{} removed'.format(args.name))
+
+    def status_ext(self, args):
+        args.append('--status')
+        self.list_ext(args)
+
+    def run_ext(self, args):
+        parser = argparse.ArgumentParser(prog='run', description='Launch a VM')
+        parser.add_argument('--name', required=True, type=self._validate_vm_name, help='Existing VM name')
+        parser.add_argument('--ram', required=True, type=self._validate_size,
+                            help='Memory size (understand suffix M and G)')
+        args = parser.parse_args(args)
+
+        try:
+            self.run(args.name, args.ram)
+        except VMmanagerException as e:
+            print(e)
+            sys.exit(1)
+
+        print('{} started'.format(args.name))
+
+    def stop_ext(self, args):
+        parser = argparse.ArgumentParser(prog='stop', description='Stop a running VM')
+        parser.add_argument('--name', required=True, type=self._validate_vm_name, help='Existing VM name')
+        parser.add_argument('-f', dest='force', action='store_true', help='Force operation')
+        args = parser.parse_args(args)
+
+        try:
+            self.stop(args.name, args.force)
+        except VMmanagerException as e:
+            print(e)
+            sys.exit(1)
+
+        print('{} stopped'.format(args.name))
+
+    def list(self, name=None, status=False):
+        """
+        List VMs
+        :param name: VM name (optional) (string)
+        :param status: Include VM status (boolean)
+        :return: An array of dictionary representing a VM
+        """
+        vms_list = []
+
+        if name is not None:
+            vms = [name]
 
             # Check existing VM
-            if not os.path.exists(self.vms_home + '/' + args.name):
+            if not os.path.exists(self.vms_home + '/' + name):
                 raise VMmanagerException("Could not list VM: doesn't exist")
         else:
             vms = self.vms
@@ -76,124 +164,127 @@ class VMmanager:
             with open(self.vms_home + '/' + v + '/mac_addr') as f:
                 mac = f.readline()
 
-            if args.status:
-                print('{name} ({mac}): {status}'.format(name=v, mac=mac,
-                                                        status='RUNNING' if self._is_running(v) else 'STOPPED'))
+            if status:
+                vms_list.append({'name': v, 'mac': mac, 'status': 'RUNNING' if self.is_running(v) else 'STOPPED'})
             else:
-                print('{name} ({mac})'.format(name=v, mac=mac))
+                vms_list.append({'name': v, 'mac': mac})
 
-    def create(self, args):
-        parser = argparse.ArgumentParser(prog='create', description='Create a new VM')
-        parser.add_argument('--name', required=True, type=self._validate_vm_name, help='VM name')
-        parser.add_argument('--disk', required=True, type=self._validate_size,
-                            help='Disk size (understand suffix M and G)')
-        args = parser.parse_args(args)
+        return vms_list
 
+    def create(self, name, disk_size):
+        """
+        Create a new VM
+        :param name: VM name (string)
+        :param disk_size: Disk size (string) (ex: 20G)
+        :return: 0 if ok
+        :raise: VMmanagerException if error occurs
+        """
         # Check existing VM
-        if os.path.exists(self.vms_home + '/' + args.name):  # or args.name in self.vms:
+        if os.path.exists(self.vms_home + '/' + name):  # or args.name in self.vms:
             raise VMmanagerException("Could not create VM: file already exist")
 
         # Create directory
-        os.mkdir(self.vms_home + '/' + args.name)
+        os.mkdir(self.vms_home + '/' + name)
 
         # Create disk
-        disk_size = args.disk.replace('M', '').replace('G', '')
-        disk_size *= 1000 if args.disk[:-1] == 'M' else 1000000
+        disk_size = disk_size.replace('M', '').replace('G', '')
+        disk_size *= 1000 if disk_size[:-1] == 'M' else 1000000
         if disk_size > 50000000:
             raise VMmanagerException("Could not create VM: disk can't be greater than 50 Go")
 
-        r = self._run_command('qemu-img -f qcow2 {}/disk.img {}'.format(self.vms_home + '/' + args.name, args.disk))
+        r = self._run_command('qemu-img -f qcow2 {}/disk.img {}'.format(self.vms_home + '/' + name, disk_size))
         if r.returncode != 0:
-            os.rmdir(self.vms_home + '/' + args.name)
+            os.rmdir(self.vms_home + '/' + name)
             raise VMmanagerException("Could not create disk")
 
         # Generate MAC address
         uid = len(self.vms)
         mac = '52:54:00:12:34:{}'.format(hex(uid)[2:])
-        with open(self.vms_home + '/' + args.name + '/mac_addr') as f:
+        with open(self.vms_home + '/' + name + '/mac_addr') as f:
             f.write(mac)
 
-        print('{} created successfully'.format(args.name))
+        return 0
 
-    def delete(self, args):
-        parser = argparse.ArgumentParser(prog='delete', description='Delete an existing VM')
-        parser.add_argument('--name', required=True, type=self._validate_vm_name, help='Existing VM name')
-        parser.add_argument('-f', dest='force', action='store_true', help='Force operation if VM is running')
-        args = parser.parse_args(args)
-
+    def delete(self, name, force=False):
+        """
+        Delete an existing VM
+        :param name: VM name (string)
+        :param force: Force deletion if VM is running (boolean)
+        :return: 0 if ok
+        :raise: VMmanagerException if error occurs
+        """
         # Check existing VM
-        if not os.path.exists(self.vms_home + '/' + args.name):  # or args.name not in self.vms:
+        if not os.path.exists(self.vms_home + '/' + name):  # or args.name not in self.vms:
             raise VMmanagerException("Could not delete VM: doesn't exist")
 
         # Check running status and eventually stop it
-        if self._is_running(args.name):
-            if not args.force:
+        if self.is_running(name):
+            if not force:
                 raise VMmanagerException('VM is running.')
             else:
-                self.stop([args.name, '-f'])
+                self.stop(name, True)
 
         # Remove files
-        os.remove(self.vms_home + '/' + args.name + '/disk.img')
-        os.remove(self.vms_home + '/' + args.name + '/mac_addr')
-        os.rmdir(self.vms_home + '/' + args.name)
+        os.remove(self.vms_home + '/' + name + '/disk.img')
+        os.remove(self.vms_home + '/' + name + '/mac_addr')
+        os.rmdir(self.vms_home + '/' + name)
 
-        print('{} removed'.format(args.name))
+        return 0
 
-    def status(self, args):
-        args.append('--status')
-        self.list(args)
-
-    def run(self, args):
-        parser = argparse.ArgumentParser(prog='run', description='Launch a VM')
-        parser.add_argument('--name', required=True, type=self._validate_vm_name, help='Existing VM name')
-        parser.add_argument('--ram', required=True, type=self._validate_size,
-                            help='Memory size (understand suffix M and G)')
-        args = parser.parse_args(args)
-
+    def run(self, name, ram_size):
+        """
+        Run an existing VM with ram_size amount of memory
+        :param name: VM name (string)
+        :param ram_size: Amount of memory allocated (string) (ex: 1G)
+        :return: 0 if ok
+        :raise: VMmanagerException if error occurs
+        """
         # Check existing VM
-        if not os.path.exists(self.vms_home + '/' + args.name):
+        if not os.path.exists(self.vms_home + '/' + name):
             raise VMmanagerException("Could not run VM: doesn't exist")
 
         # Check running status
-        if self._is_running(args.name):
+        if self.is_running(name):
             raise VMmanagerException("Could not run VM: already running")
 
         # Fetch MAC address
-        with open(self.vms_home + '/' + args.name + '/mac_addr') as f:
+        with open(self.vms_home + '/' + name + '/mac_addr') as f:
             mac = f.readline()
 
         # Run VM
         cmd = 'kvm -m {mem} {img}.img -display none -monitor unix:{path}/monitor,server,nowait ' \
-              '-k fr -netdev bridge,id=hn0 -device virtio-net-pci,netdev=hn0,id=nic1,mac={mac} -daemonize'\
-            .format(mem=args.ram,
-                    img=self.vms_home + '/' + args.name + '/' + args.name,
-                    path=self.vms_home + '/' + args.name,
+              '-k fr -netdev bridge,id=hn0 -device virtio-net-pci,netdev=hn0,id=nic1,mac={mac} -daemonize' \
+            .format(mem=ram_size,
+                    img=self.vms_home + '/' + name + '/' + name,
+                    path=self.vms_home + '/' + name,
                     mac=mac)
 
         r = self._run_command(cmd)
         if r.returncode != 0:
             raise VMmanagerException("Could not run VM: kvm returns {}".format(r.returncode))
 
-        print('{} started'.format(args.name))
+        return 0
 
-    def stop(self, args):
-        parser = argparse.ArgumentParser(prog='stop', description='Stop a running VM')
-        parser.add_argument('--name', required=True, type=self._validate_vm_name, help='Existing VM name')
-        parser.add_argument('-f', dest='force', action='store_true', help='Force operation')
-        args = parser.parse_args(args)
-
+    def stop(self, name, force=False):
+        """
+        Stop a running VM
+        :param name: VM name (string)
+        :param force: Force stop with SIGTERM (boolean)
+        :return: 0 if ok
+        :raise: VMmanagerException if error occurs
+        """
         # Check existing VM
-        if not os.path.exists(self.vms_home + '/' + args.name):
+        if not os.path.exists(self.vms_home + '/' + name):
             raise VMmanagerException("Could not stop VM: doesn't exist")
 
         # Check running status
-        if not self._is_running(args.name):
+        if not self.is_running(name):
             raise VMmanagerException("Could not stop VM: not running")
 
         # Connecting to UNIX socket (QEMU monitor)
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         try:
-            sock.connect(self.vms_home + '/' + args.name + '/monitor')
+            sock.connect(self.vms_home + '/' + name + '/monitor')
         except socket.error as e:
             raise VMmanagerException('Could not stop VM: error with UNIX socket')
 
@@ -205,26 +296,25 @@ class VMmanager:
         time.sleep(5)
 
         # Check VM state
-        if self._is_running(args.name):
-            if not args.force:
+        if self.is_running(name):
+            if not force:
                 raise VMmanagerException('Could not stop VM')
             else:
                 # Force shutdown
-                self._run_command("pkill -f 'qemu-system-x86_64.*{}.*'".format(args.name))
-        else:
-            print('{} stopped'.format(args.name))
+                self._run_command("pkill -f 'qemu-system-x86_64.*{}.*'".format(name))
 
-
-def usage():
-    usage = """Usage: {} <operation> [-h] [arguments...]
-<operation> = list|create|delete|status|run|stop
-
-""".format(sys.argv[0])
-    sys.stderr.write(usage)
-    sys.exit(1)
+        return 0
 
 
 if __name__ == "__main__":
+    def usage():
+        usage = """Usage: {} <operation> [-h] [arguments...]
+<operation> = list|create|delete|status|run|stop
+
+""".format(sys.argv[0])
+        sys.stderr.write(usage)
+        sys.exit(1)
+
     if len(sys.argv) < 2:
         usage()
 
@@ -234,16 +324,16 @@ if __name__ == "__main__":
     args = sys.argv[1:]
 
     if operation == 'list':
-        manager.list(args)
+        manager.list_ext(args)
     elif operation == 'create':
-        manager.create(args)
+        manager.create_ext(args)
     elif operation == 'delete':
-        manager.delete(args)
+        manager.delete_ext(args)
     elif operation == 'status':
-        manager.status(args)
+        manager.status_ext(args)
     elif operation == 'run':
-        manager.run(args)
+        manager.run_ext(args)
     elif operation == 'stop':
-        manager.stop(args)
+        manager.stop_ext(args)
     else:
         usage()
