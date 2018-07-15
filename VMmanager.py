@@ -9,6 +9,7 @@ import grp
 import argparse
 import subprocess
 import time
+import shutil
 
 
 class VMmanagerException(Exception):
@@ -283,12 +284,51 @@ class VMmanager:
 
         return 0
 
+    def clone(self, name, new_name):
+        """
+        Clone an existing VM
+        :param name: VM name to clone (string)
+        :param new_name: VM name of the clone (string)
+        :return: 0 if ok
+        :raise: VMmanagerException if error occurs
+        """
+        if not self._validate_vm_name(name) or not self._validate_vm_name(new_name):
+            raise VMmanagerException("Could not clone VM: Invalid name")
+
+        # Check existing VM
+        if name not in self.vms:
+            raise VMmanagerException("Could not clone VM: doesn't exist")
+        if os.path.exists(self.vms_home + '/' + new_name):
+            raise VMmanagerException("Could not clone VM: file exist")
+
+        # Check running status
+        if self.is_running(name):
+            raise VMmanagerException("Could not clone VM: VM is running")
+
+        # Create directory
+        os.mkdir(self.vms_home + '/' + new_name)
+
+        # Clone disk
+        shutil.copyfile(src=self.vms_home + '/' + name + '/disk.img',
+                        dst=self.vms_home + '/' + new_name + '/disk.img',
+                        follow_symlinks=False)
+
+        # Generate MAC address
+        uid = len(self.vms)
+        mac = '52:54:00:12:34:{}'.format(hex(uid)[2:])
+        with open(self.vms_home + '/' + new_name + '/mac_addr') as f:
+            f.write(mac)
+
+        self.vms[new_name] = {'mac': mac}
+
+        return 0
+
 
 # MAIN
 if __name__ == "__main__":
     def usage():
         usage = """Usage: {} <operation> [-h] [arguments...]
-<operation> = list|create|delete|status|run|stop
+<operation> = list|create|clone|delete|status|run|stop
 
 """.format(sys.argv[0])
         sys.stderr.write(usage)
@@ -365,6 +405,20 @@ if __name__ == "__main__":
             sys.exit(1)
 
         print('{} removed'.format(args.name))
+
+    elif operation == 'clone':
+        parser = argparse.ArgumentParser(prog='clone', description='Clone an existing VM')
+        parser.add_argument('--name', required=True, type=_validate_vm_name, help='Existing VM name')
+        parser.add_argument('--new-name', dest='new', required=True, type=_validate_vm_name, help='Name of the clone')
+        args = parser.parse_args(args)
+
+        try:
+            manager.clone(args.name, args.new)
+        except VMmanagerException as e:
+            print(e)
+            sys.exit(1)
+
+        print('{} cloned'.format(args.name))
 
     elif operation == 'run':
         parser = argparse.ArgumentParser(prog='run', description='Launch a VM')
