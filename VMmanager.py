@@ -32,11 +32,29 @@ class VMmanager:
         if 'kvm' not in groups:
             raise VMmanagerException(user + " isn't in kvm group.")
 
-        self.vms = []
+        self.vms = {}
         self._load_vms()
 
     def _load_vms(self):
-        self.vms = os.listdir(self.vms_home)
+        """
+        Load VMs in self.vms
+        :return: None
+        """
+        directory_content = os.listdir(self.vms_home)
+        for v in directory_content:
+            if not self._validate_vm_name(v):
+                continue
+
+            if not os.path.isfile(self.vms_home + '/' + v + '/mac_addr'):
+                continue
+
+            with open(self.vms_home + '/' + v + '/mac_addr', 'r') as f:
+                mac = f.readline()
+
+            if not self._validate_mac_addr(mac):
+                continue
+
+            self.vms[v] = {'mac': mac}
 
     def is_running(self, vm):
         """
@@ -57,6 +75,17 @@ class VMmanager:
         """
         regex = re.compile('[a-zA-Z0-9_-]{1,32}')
         if regex.fullmatch(name) is None:
+            return False
+        return True
+
+    def _validate_mac_addr(self, addr):
+        """
+        Validate MAC address string against regex
+        :param addr: MAC address (string)
+        :return: True if ok, False otherwise
+        """
+        regex = re.compile('([a-fA-F0-9]{2}:){7}[a-fA-F0-9]{2}')
+        if regex.fullmatch(addr) is None:
             return False
         return True
 
@@ -85,18 +114,12 @@ class VMmanager:
         vms_list = []
 
         if name is not None:
-            vms = [name]
-
-            # Check existing VM
-            if not os.path.exists(self.vms_home + '/' + name):
-                raise VMmanagerException("Could not list VM: doesn't exist")
+            vms = {name: self.vms[name]}
         else:
             vms = self.vms
 
         for v in vms:
-            # Fetch MAC address
-            with open(self.vms_home + '/' + v + '/mac_addr') as f:
-                mac = f.readline()
+            mac = vms[v]['mac']
 
             if status:
                 vms_list.append({'name': v, 'mac': mac, 'status': 'RUNNING' if self.is_running(v) else 'STOPPED'})
@@ -120,7 +143,7 @@ class VMmanager:
             raise VMmanagerException("Could not run VM: Invalid disk size")
 
         # Check existing VM
-        if os.path.exists(self.vms_home + '/' + name):  # or args.name in self.vms:
+        if os.path.exists(self.vms_home + '/' + name) or name in self.vms:
             raise VMmanagerException("Could not create VM: file already exist")
 
         # Create directory
@@ -143,6 +166,8 @@ class VMmanager:
         with open(self.vms_home + '/' + name + '/mac_addr') as f:
             f.write(mac)
 
+        self.vms[name] = {'mac': mac}
+
         return 0
 
     def delete(self, name, force=False):
@@ -157,7 +182,7 @@ class VMmanager:
             raise VMmanagerException("Could not delete VM: Invalid name")
 
         # Check existing VM
-        if not os.path.exists(self.vms_home + '/' + name):  # or args.name not in self.vms:
+        if name not in self.vms:
             raise VMmanagerException("Could not delete VM: doesn't exist")
 
         # Check running status and eventually stop it
@@ -171,6 +196,8 @@ class VMmanager:
         os.remove(self.vms_home + '/' + name + '/disk.img')
         os.remove(self.vms_home + '/' + name + '/mac_addr')
         os.rmdir(self.vms_home + '/' + name)
+
+        self.vms.pop(name)
 
         return 0
 
@@ -189,7 +216,7 @@ class VMmanager:
             raise VMmanagerException("Could not run VM: Invalid memory size")
 
         # Check existing VM
-        if not os.path.exists(self.vms_home + '/' + name):
+        if name not in self.vms:
             raise VMmanagerException("Could not run VM: doesn't exist")
 
         # Check running status
@@ -197,8 +224,7 @@ class VMmanager:
             raise VMmanagerException("Could not run VM: already running")
 
         # Fetch MAC address
-        with open(self.vms_home + '/' + name + '/mac_addr') as f:
-            mac = f.readline()
+        mac = self.vms[name]['mac']
 
         # Run VM
         cmd = 'kvm -m {mem} {img}.img -display none -monitor unix:{path}/monitor,server,nowait ' \
@@ -226,7 +252,7 @@ class VMmanager:
             raise VMmanagerException("Could not stop VM: Invalid name")
 
         # Check existing VM
-        if not os.path.exists(self.vms_home + '/' + name):
+        if name not in self.vms:
             raise VMmanagerException("Could not stop VM: doesn't exist")
 
         # Check running status
