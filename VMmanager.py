@@ -101,6 +101,23 @@ class VMmanager:
             return False
         return True
 
+    def _get_available_mac_addr(self):
+        """
+        Return an unique mac address or ''
+        :return: String
+        """
+        mac_addrs = [vm['mac'] for vm in self.vms]
+        uid = len(self.vms)
+        if uid == 255:
+            return ''
+
+        mac = '52:54:00:12:34:{}'.format(hex(uid)[2:])
+        while mac in mac_addrs:
+            uid = (uid + 1) % 255
+            mac = '52:54:00:12:34:{}'.format(hex(uid)[2:])
+
+        return mac
+
     def list(self, name=None, status=False):
         """
         List VMs
@@ -147,6 +164,11 @@ class VMmanager:
         if os.path.exists(self.vms_home + '/' + name) or name in self.vms:
             raise VMmanagerException("Could not create VM: file already exist")
 
+        # Generate MAC address
+        mac = self._get_available_mac_addr()
+        if mac == '':
+            raise VMmanagerException("Could not create VM: no MAC address available (up to 255 VMs allowed)")
+
         # Create directory
         os.mkdir(self.vms_home + '/' + name)
 
@@ -161,9 +183,7 @@ class VMmanager:
             os.rmdir(self.vms_home + '/' + name)
             raise VMmanagerException("Could not create disk")
 
-        # Generate MAC address
-        uid = len(self.vms)
-        mac = '52:54:00:12:34:{}'.format(hex(uid)[2:])
+        # Write MAC address
         with open(self.vms_home + '/' + name + '/mac_addr') as f:
             f.write(mac)
 
@@ -305,6 +325,11 @@ class VMmanager:
         if self.is_running(name):
             raise VMmanagerException("Could not clone VM: VM is running")
 
+        # Generate MAC address
+        mac = self._get_available_mac_addr()
+        if mac == '':
+            raise VMmanagerException("Could not clone VM: no MAC address available (up to 255 VMs allowed)")
+
         # Create directory
         os.mkdir(self.vms_home + '/' + new_name)
 
@@ -313,9 +338,7 @@ class VMmanager:
                         dst=self.vms_home + '/' + new_name + '/disk.img',
                         follow_symlinks=False)
 
-        # Generate MAC address
-        uid = len(self.vms)
-        mac = '52:54:00:12:34:{}'.format(hex(uid)[2:])
+        # Write MAC address
         with open(self.vms_home + '/' + new_name + '/mac_addr') as f:
             f.write(mac)
 
