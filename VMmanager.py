@@ -261,6 +261,55 @@ class VMmanager:
 
         return 0
 
+    def install(self, name, ram_size, cd_rom, display='curses'):
+        """
+        Install an existing VM with ram_size amount of memory booting from cd_rom image file
+        !!! THIS IS A BLOCKING OPERATION THAT REQUIRE USER INTERACTION !!!
+        :param name: VM name (string)
+        :param ram_size: Amount of memory allocated (string) (ex: 1G)
+        :param cd_rom: .iso file path to boot from
+        :param display: Select the display type ('curses' or 'nographic')
+        :return: 0 if ok
+        :raise: VMmanagerException if error occurs
+        """
+        if not self._validate_vm_name(name):
+            raise VMmanagerException("Could not install VM: Invalid name")
+
+        if not self._validate_size(ram_size):
+            raise VMmanagerException("Could not install VM: Invalid memory size")
+
+        if display == 'curses':
+            display = '-display curses'
+        elif display == 'nographic':
+            display = '-nographic'
+        else:
+            raise VMmanagerException("Could not install VM: Invalid display type")
+
+        # Check existing VM
+        if name not in self.vms:
+            raise VMmanagerException("Could not install VM: doesn't exist")
+
+        # Check running status
+        if self.is_running(name):
+            raise VMmanagerException("Could not install VM: already running")
+
+        # Fetch MAC address
+        mac = self.vms[name]['mac']
+
+        # Run VM
+        cmd = 'kvm -m {mem} {img}.img -cdrom {cdrom} -boot d {display} -k fr -netdev bridge,id=hn0 ' \
+              '-device virtio-net-pci,netdev=hn0,id=nic1,mac={mac}'.format(mem=ram_size,
+                                                                           img=self.vms_home + '/' + name + '/' + name,
+                                                                           cdrom=cd_rom,
+                                                                           display=display,
+                                                                           mac=mac)
+
+        r = self._run_command(cmd)
+        if r.returncode != 0:
+            raise VMmanagerException("Could not install VM: kvm returns {}".format(r.returncode))
+
+        return 0
+
     def stop(self, name, force=False):
         """
         Stop a running VM
@@ -351,7 +400,7 @@ class VMmanager:
 if __name__ == "__main__":
     def usage():
         usage = """Usage: {} <operation> [-h] [arguments...]
-<operation> = list|create|clone|delete|status|run|stop
+<operation> = list|create|clone|delete|status|run|install|stop
 
 """.format(sys.argv[0])
         sys.stderr.write(usage)
@@ -367,6 +416,11 @@ if __name__ == "__main__":
         regex = re.compile('[1-9][0-9]*[MG]')
         if regex.fullmatch(value) is None:
             raise argparse.ArgumentTypeError('Invalid size.')
+        return value
+
+    def _validate_cdrom(value):
+        if not os.path.isfile(value):
+            raise argparse.ArgumentTypeError('Not a file.')
         return value
 
     if len(sys.argv) < 2:
@@ -457,6 +511,25 @@ if __name__ == "__main__":
             sys.exit(1)
 
         print('{} started'.format(args.name))
+
+    elif operation == 'install':
+        parser = argparse.ArgumentParser(prog='install', description='Install an existing VM (BLOCKING OPERATION)')
+        parser.add_argument('--name', required=True, type=_validate_vm_name, help='Existing VM name')
+        parser.add_argument('--ram', required=True, type=_validate_size,
+                            help='Memory size (understand suffix M and G)')
+        parser.add_argument('--cd-rom', dest='cdrom', required=True, type=_validate_cdrom,
+                            help='Image file to boot from')
+        parser.add_argument('--display', required=False, default='curses', choices=['curses', 'nographic'],
+                            help="Select the display type between 'curses' and 'nographic'")
+        args = parser.parse_args(args)
+
+        try:
+            manager.install(args.name, args.ram, args.cdrom, args.display)
+        except VMmanagerException as e:
+            print(e)
+            sys.exit(1)
+
+        print('{} install terminated'.format(args.name))
 
     elif operation == 'stop':
         parser = argparse.ArgumentParser(prog='stop', description='Stop a running VM')
