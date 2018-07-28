@@ -126,7 +126,7 @@ class VMmanager:
         :return: An array of dictionary representing a VM
         :raise: VMmanagerException if error occurs
         """
-        if not self._validate_vm_name(name):
+        if name is not None and not self._validate_vm_name(name):
             raise VMmanagerException("Could not list VM: Invalid name")
 
         vms_list = []
