@@ -173,9 +173,9 @@ class VMmanager:
         os.mkdir(self.vms_home + '/' + name)
 
         # Create disk
-        disk_size = disk_size.replace('M', '').replace('G', '')
-        disk_size *= 1000 if disk_size[:-1] == 'M' else 1000000
-        if disk_size > 50000000:
+        disk_size_num = int(disk_size.replace('M', '').replace('G', ''))
+        disk_size_num *= 1000 if disk_size[:-1] == 'M' else 1000000
+        if disk_size_num > 50000000:
             raise VMmanagerException("Could not create VM: disk can't be greater than 50 Go")
 
         r = self._run_command('qemu-img -f qcow2 {}/disk.img {}'.format(self.vms_home + '/' + name, disk_size))
