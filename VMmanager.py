@@ -85,7 +85,7 @@ class VMmanager:
         :param addr: MAC address (string)
         :return: True if ok, False otherwise
         """
-        regex = re.compile('([a-fA-F0-9]{2}:){7}[a-fA-F0-9]{2}')
+        regex = re.compile('([a-fA-F0-9]{2}:){5}[a-fA-F0-9]{2}')
         if regex.fullmatch(addr) is None:
             return False
         return True
@@ -106,7 +106,7 @@ class VMmanager:
         Return an unique mac address or ''
         :return: String
         """
-        mac_addrs = [vm['mac'] for vm in self.vms]
+        mac_addrs = [self.vms[vm]['mac'] for vm in self.vms]
         uid = len(self.vms)
         if uid == 255:
             return ''
