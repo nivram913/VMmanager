@@ -184,7 +184,7 @@ class VMmanager:
             raise VMmanagerException("Could not create disk")
 
         # Write MAC address
-        with open(self.vms_home + '/' + name + '/mac_addr') as f:
+        with open(self.vms_home + '/' + name + '/mac_addr', 'w') as f:
             f.write(mac)
 
         self.vms[name] = {'mac': mac}
@@ -388,7 +388,7 @@ class VMmanager:
                         follow_symlinks=False)
 
         # Write MAC address
-        with open(self.vms_home + '/' + new_name + '/mac_addr') as f:
+        with open(self.vms_home + '/' + new_name + '/mac_addr', 'w') as f:
             f.write(mac)
 
         self.vms[new_name] = {'mac': mac}
