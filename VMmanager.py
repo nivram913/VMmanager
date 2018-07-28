@@ -178,7 +178,7 @@ class VMmanager:
         if disk_size_num > 50000000:
             raise VMmanagerException("Could not create VM: disk can't be greater than 50 Go")
 
-        r = self._run_command('qemu-img -f qcow2 {}/disk.img {}'.format(self.vms_home + '/' + name, disk_size))
+        r = self._run_command('qemu-img create -f qcow2 {}/disk.img {}'.format(self.vms_home + '/' + name, disk_size))
         if r.returncode != 0:
             os.rmdir(self.vms_home + '/' + name)
             raise VMmanagerException("Could not create disk")
