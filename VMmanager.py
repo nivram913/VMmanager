@@ -132,6 +132,8 @@ class VMmanager:
         vms_list = []
 
         if name is not None:
+            if name not in self.vms:
+                raise VMmanagerException("Could not list VM: doesn't exist")
             vms = {name: self.vms[name]}
         else:
             vms = self.vms
