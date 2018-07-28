@@ -111,10 +111,10 @@ class VMmanager:
         if uid == 255:
             return ''
 
-        mac = '52:54:00:12:34:{}'.format(hex(uid)[2:])
+        mac = '52:54:00:12:34:%02x' % uid
         while mac in mac_addrs:
             uid = (uid + 1) % 255
-            mac = '52:54:00:12:34:{}'.format(hex(uid)[2:])
+            mac = '52:54:00:12:34:%02x' % uid
 
         return mac
 
