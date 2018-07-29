@@ -419,7 +419,11 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         usage()
 
-    manager = VMmanager(getpass.getuser())
+    try:
+        manager = VMmanager(getpass.getuser())
+    except VMmanagerException as e:
+        sys.stderr.write(e.args[0] + '\n')
+        sys.exit(1)
 
     operation = sys.argv.pop(1)
     args = sys.argv[1:]
@@ -438,7 +442,7 @@ if __name__ == "__main__":
         try:
             vms_list = manager.list(args.name, status)
         except VMmanagerException as e:
-            print(e)
+            sys.stderr.write(e.args[0] + '\n')
             sys.exit(1)
 
         for v in vms_list:
@@ -457,7 +461,7 @@ if __name__ == "__main__":
         try:
             manager.create(args.name, args.disk)
         except VMmanagerException as e:
-            print(e)
+            sys.stderr.write(e.args[0] + '\n')
             sys.exit(1)
 
         print('{} created successfully'.format(args.name))
@@ -471,7 +475,7 @@ if __name__ == "__main__":
         try:
             manager.delete(args.name, args.force)
         except VMmanagerException as e:
-            print(e)
+            sys.stderr.write(e.args[0] + '\n')
             sys.exit(1)
 
         print('{} removed'.format(args.name))
@@ -485,7 +489,7 @@ if __name__ == "__main__":
         try:
             manager.clone(args.name, args.new)
         except VMmanagerException as e:
-            print(e)
+            sys.stderr.write(e.args[0] + '\n')
             sys.exit(1)
 
         print('{} cloned'.format(args.name))
@@ -500,7 +504,7 @@ if __name__ == "__main__":
         try:
             manager.run(args.name, args.ram)
         except VMmanagerException as e:
-            print(e)
+            sys.stderr.write(e.args[0] + '\n')
             sys.exit(1)
 
         print('{} started'.format(args.name))
@@ -519,7 +523,7 @@ if __name__ == "__main__":
         try:
             manager.install(args.name, args.ram, args.cdrom, args.display)
         except VMmanagerException as e:
-            print(e)
+            sys.stderr.write(e.args[0] + '\n')
             sys.exit(1)
 
         print('{} install terminated'.format(args.name))
@@ -533,7 +537,7 @@ if __name__ == "__main__":
         try:
             manager.stop(args.name, args.force)
         except VMmanagerException as e:
-            print(e)
+            sys.stderr.write(e.args[0] + '\n')
             sys.exit(1)
 
         print('{} stopped'.format(args.name))
