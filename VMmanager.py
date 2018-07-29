@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import os
+from random import random
 import sys
 import socket
 import re
@@ -101,22 +102,12 @@ class VMmanager:
             return False
         return True
 
-    def _get_available_mac_addr(self):
+    def _create_mac_addr(self):
         """
-        Return an unique mac address or ''
+        Return a mac address randomly generated
         :return: String
         """
-        mac_addrs = [self.vms[vm]['mac'] for vm in self.vms]
-        uid = len(self.vms)
-        if uid == 255:
-            return ''
-
-        mac = '52:54:00:12:34:%02x' % uid
-        while mac in mac_addrs:
-            uid = (uid + 1) % 255
-            mac = '52:54:00:12:34:%02x' % uid
-
-        return mac
+        return '52:54:00:%02x:%02x:%02x' % (round(random() * 255), round(random() * 255), round(random() * 255))
 
     def list(self, name=None, status=False):
         """
@@ -167,7 +158,7 @@ class VMmanager:
             raise VMmanagerException("Could not create VM: file already exist")
 
         # Generate MAC address
-        mac = self._get_available_mac_addr()
+        mac = self._create_mac_addr()
         if mac == '':
             raise VMmanagerException("Could not create VM: no MAC address available (up to 255 VMs allowed)")
 
@@ -377,7 +368,7 @@ class VMmanager:
             raise VMmanagerException("Could not clone VM: VM is running")
 
         # Generate MAC address
-        mac = self._get_available_mac_addr()
+        mac = self._create_mac_addr()
         if mac == '':
             raise VMmanagerException("Could not clone VM: no MAC address available (up to 255 VMs allowed)")
 

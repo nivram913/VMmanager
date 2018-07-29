@@ -9,8 +9,6 @@ This tool serve to administrate virtual machines with Qemu/KVM on an headless se
 - Choose amount of memory on each start
 - Choose disk size during creation
 
-Currently, only up to 255 VMs can be managed.
-
 ## Usage
 
 You can place this script in `/usr/local/bin/VMmanager` and give it execution right (you must be root):
@@ -22,6 +20,8 @@ Usage:
 VMmanager <operation> [-h] [arguments...]
 <operation> = list|create|delete|state|run|install|stop
 ```
+
+*Note: MAC addresses are actually randomly generated, so collision may appears.*
 
 ## Prerequisites
 Each user who wants to administrate VMs have to:
