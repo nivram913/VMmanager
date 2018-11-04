@@ -26,7 +26,7 @@ VMmanager <operation> [-h] [arguments...]
 ## Prerequisites
 Each user who wants to administrate VMs have to:
 
-- are in the `kvm` group
+- be in the `kvm` group
 - have a directory `/opt/VMs/<username\>`
 
 The utility `/usr/lib/qemu/qemu-bridge-helper` must have capability `CAP_NET_ADMIN` set:
